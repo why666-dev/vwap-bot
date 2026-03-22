@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>VWAP Bot — Live Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* ── RESET & BASE ─────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #03060d;
+    --card:    #080e1a;
+    --card2:   #0c1525;
+    --border:  #1a2540;
+    --green:   #00f5a0;
+    --red:     #ff3d6e;
+    --yellow:  #ffd24d;
+    --blue:    #4d9eff;
+    --purple:  #a855f7;
+    --text:    #e8f0ff;
+    --dim:     #5a7090;
+    --mono:    'Space Mono', monospace;
+    --display: 'Syne', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,245,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── LAYOUT ──────────────────────────────────────────── */
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+  }
+
+  /* ── CONFIG SCREEN ───────────────────────────────────── */
+  #config-screen { display: none !important; }
+
+  .config-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--green);
+    border-radius: 12px;
+    padding: 36px 28px;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .config-logo {
+    font-family: var(--display);
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--green);
+    letter-spacing: -1px;
+    margin-bottom: 6px;
+  }
+
+  .config-sub {
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-bottom: 28px;
+  }
+
+  .config-label {
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .config-input {
+    width: 100%;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    margin-bottom: 16px;
+    outline: none;
+    transition: border-color .2s;
+  }
+
+  .config-input:focus { border-color: var(--green); }
+
+  .config-btn {
+    width: 100%;
+    background: var(--green);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    padding: 14px;
+    font-family: var(--display);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+    margin-top: 4px;
+  }
+
+  .config-btn:hover  { opacity: .9; }
+  .config-btn:active { transform: scale(.98); }
+
+  .config-note {
+    font-size: 10px;
+    color: var(--dim);
+    margin-top: 14px;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* ── DASHBOARD ───────────────────────────────────────── */
+  #dashboard { display: block; }
+
+  /* TOP BAR */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    gap: 12px;
+  }
+
+  .logo {
+    font-family: var(--display);
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--green);
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  .logo-sub {
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+
+  .topbar-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+  }
+
+  .live-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: 2px;
+  }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  .dot.red { background: var(--red); box-shadow: 0 0 8px var(--red); animation: none; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .clock {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .mkt-badge {
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 2px 10px;
+    border-radius: 3px;
+    font-weight: 700;
+  }
+
+  .mkt-open   { color:var(--green);  background:rgba(0,245,160,.1);  border:1px solid rgba(0,245,160,.3);  }
+  .mkt-closed { color:var(--yellow); background:rgba(255,210,77,.1); border:1px solid rgba(255,210,77,.3); }
+
+  /* ACCOUNT BAR */
+  .acct-bar {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  @media(min-width:600px) {
+    .acct-bar { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  .acct-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+
+  .acct-label {
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+
+  .acct-val {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* SYMBOL CARDS */
+  .sym-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  @media(min-width:600px) {
+    .sym-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  .sym-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .sym-header {
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sym-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+
+  .sym-name {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--text);
+    letter-spacing: -1px;
+  }
+
+  .sym-full {
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  .side-pill {
+    padding: 3px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+
+  .side-long  { background:rgba(0,245,160,.15);  color:var(--green); border:1px solid rgba(0,245,160,.3);  }
+  .side-short { background:rgba(255,61,110,.15); color:var(--red);   border:1px solid rgba(255,61,110,.3); }
+  .side-flat  { background:rgba(90,112,144,.15); color:var(--dim);   border:1px solid rgba(90,112,144,.3); }
+
+  .price-row {
+    display: flex;
+    gap: 24px;
+    align-items: flex-end;
+  }
+
+  .price-block .plabel {
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-bottom: 2px;
+  }
+
+  .price-block .pval {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .price-block .pval.green  { color: var(--green); }
+  .price-block .pval.yellow { color: var(--yellow); }
+
+  /* VWAP bar */
+  .vwap-bar-wrap {
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .vwap-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--dim);
+    margin-bottom: 5px;
+  }
+
+  .vwap-bar-track {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    position: relative;
+    overflow: visible;
+  }
+
+  .vwap-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    position: absolute;
+    transition: all .6s ease;
+  }
+
+  /* STATS GRID */
+  .sym-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .stat-box {
+    background: var(--card);
+    padding: 12px 14px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  .stat-val {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .stat-val.green  { color: var(--green); }
+  .stat-val.red    { color: var(--red); }
+  .stat-val.yellow { color: var(--yellow); }
+
+  /* POSITIONS TABLE */
+  .section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+
+  .section-hdr {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 3px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .section-hdr span { color: var(--green); font-size: 11px; }
+
+  /* ORDERS TABLE */
+  .orders-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(26,37,64,.5);
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  .tag {
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .tag-buy   { background:rgba(0,245,160,.15);  color:var(--green); }
+  .tag-sell  { background:rgba(255,61,110,.15); color:var(--red); }
+  .tag-filled{ background:rgba(77,158,255,.15); color:var(--blue); }
+
+  /* STRATEGY RULES */
+  .rules-grid {
+    padding: 14px 18px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  @media(min-width:500px) {
+    .rules-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  .rule-row { display: flex; gap: 10px; align-items: flex-start; }
+  .rule-key { color: var(--green); font-size: 10px; font-weight: 700; min-width: 90px; letter-spacing: 1px; }
+  .rule-val { color: var(--dim); font-size: 11px; line-height: 1.4; }
+
+  /* REFRESH BTN */
+  .refresh-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all .2s;
+  }
+
+  .refresh-btn:hover { border-color: var(--green); color: var(--green); }
+
+  /* FOOTER */
+  .footer {
+    text-align: center;
+    font-size: 10px;
+    color: var(--dim);
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    line-height: 2;
+  }
+
+  /* LOADING */
+  .loading {
+    text-align: center;
+    padding: 30px;
+    color: var(--dim);
+    font-size: 12px;
+    letter-spacing: 2px;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* EMPTY STATE */
+  .empty { padding: 20px; text-align: center; color: var(--dim); font-size: 11px; }
+
+  /* GLOW accents */
+  .glow-green { text-shadow: 0 0 12px rgba(0,245,160,.5); }
+</style>
+</head>
+<body>
+
+<!-- ── CONFIG SCREEN ──────────────────────────────────────── -->
+<div id="config-screen">
+  <div class="config-box">
+    <div class="config-logo">⚡ VWAP BOT</div>
+    <div class="config-sub">LIVE PAPER TRADING DASHBOARD</div>
+
+    <label class="config-label">ALPACA PAPER API KEY</label>
+    <input class="config-input" id="inp-key" type="text"
+      placeholder="PKxxxxxxxxxxxxxxxx" autocomplete="off">
+
+    <label class="config-label">ALPACA PAPER SECRET KEY</label>
+    <input class="config-input" id="inp-secret" type="password"
+      placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+
+    <button class="config-btn" onclick="connect()">CONNECT TO PAPER ACCOUNT →</button>
+
+    <p class="config-note">
+      Keys are stored only in your browser session.<br>
+      Never leave this page open on a shared device.<br>
+      Only works with Alpaca <b>Paper Trading</b> keys.
+    </p>
+  </div>
+</div>
+
+<!-- ── DASHBOARD ──────────────────────────────────────────── -->
+<div id="dashboard">
+<div class="wrapper">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div>
+      <div class="logo glow-green">⚡ VWAP BOT</div>
+      <div class="logo-sub">QQQ · TQQQ · PAPER TRADING</div>
+    </div>
+    <div class="topbar-right">
+      <div class="live-dot">
+        <span class="dot" id="conn-dot"></span>
+        <span id="conn-label" style="color:var(--green)">LIVE</span>
+      </div>
+      <div class="clock" id="clock">--:-- --</div>
+      <div class="clock" style="font-size:10px;color:var(--dim)" id="clock-et"></div>
+      <div class="mkt-badge mkt-closed" id="mkt-badge">LOADING</div>
+    </div>
+  </div>
+
+  <!-- ACCOUNT BAR -->
+  <div class="acct-bar" id="acct-bar">
+    <div class="acct-card">
+      <div class="acct-label">EQUITY</div>
+      <div class="acct-val" id="acc-equity">—</div>
+    </div>
+    <div class="acct-card">
+      <div class="acct-label">BUYING POWER</div>
+      <div class="acct-val" id="acc-bp">—</div>
+    </div>
+    <div class="acct-card">
+      <div class="acct-label">P&L TODAY</div>
+      <div class="acct-val" id="acc-pnl">—</div>
+    </div>
+    <div class="acct-card">
+      <div class="acct-label">CASH</div>
+      <div class="acct-val" id="acc-cash">—</div>
+    </div>
+  </div>
+
+  <!-- SYMBOL CARDS -->
+  <div class="sym-grid" id="sym-grid">
+    <!-- Injected by JS -->
+  </div>
+
+  <!-- OPEN POSITIONS -->
+  <div class="section">
+    <div class="section-hdr">
+      OPEN POSITIONS
+      <button class="refresh-btn" onclick="fetchAll()">↻ REFRESH</button>
+    </div>
+    <div class="orders-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>SYMBOL</th>
+            <th>SIDE</th>
+            <th>QTY</th>
+            <th>ENTRY</th>
+            <th>CURRENT</th>
+            <th>UNREALIZED P&L</th>
+            <th>MARKET VAL</th>
+          </tr>
+        </thead>
+        <tbody id="positions-body">
+          <tr><td colspan="7" class="loading"><span class="spinner"></span>Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RECENT ORDERS -->
+  <div class="section">
+    <div class="section-hdr">RECENT ORDERS <span id="order-count"></span></div>
+    <div class="orders-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>TIME (ET)</th>
+            <th>SYMBOL</th>
+            <th>SIDE</th>
+            <th>QTY</th>
+            <th>TYPE</th>
+            <th>STATUS</th>
+            <th>FILLED @ $</th>
+          </tr>
+        </thead>
+        <tbody id="orders-body">
+          <tr><td colspan="7" class="loading"><span class="spinner"></span>Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- STRATEGY RULES -->
+  <div class="section">
+    <div class="section-hdr">STRATEGY RULES — ZARATTINI &amp; AZIZ 2023</div>
+    <div class="rules-grid">
+      <div class="rule-row"><span class="rule-key">VWAP</span><span class="rule-val">Σ(HLC3×Vol)/Σ(Vol) — resets 09:30 ET</span></div>
+      <div class="rule-row"><span class="rule-key">LONG</span><span class="rule-val">Candle closes ABOVE VWAP → BUY</span></div>
+      <div class="rule-row"><span class="rule-key">SHORT</span><span class="rule-val">Candle closes BELOW VWAP → SELL SHORT</span></div>
+      <div class="rule-row"><span class="rule-key">FLIP</span><span class="rule-val">Close crosses VWAP → flatten + reverse</span></div>
+      <div class="rule-row"><span class="rule-key">ENTRY</span><span class="rule-val">First signal after 09:31 ET / 7:01 PM IST</span></div>
+      <div class="rule-row"><span class="rule-key">EOD EXIT</span><span class="rule-val">All closed at 16:00 ET / 1:30 AM IST</span></div>
+      <div class="rule-row"><span class="rule-key">SIZE</span><span class="rule-val">100% available equity per trade</span></div>
+      <div class="rule-row"><span class="rule-key">COMMISSION</span><span class="rule-val">$0.0005 per share</span></div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div>⚡ VWAP BOT · PAPER TRADING ONLY · NOT FINANCIAL ADVICE</div>
+    <div>US Market: 7:01 PM – 1:30 AM IST · Mon–Fri</div>
+    <div id="last-update" style="margin-top:4px"></div>
+  </div>
+
+</div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────
+// ── YOUR ALPACA PAPER KEYS — safe in private repo ─────────
+const AUTO_KEY    = 'YOUR_ALPACA_API_KEY';
+const AUTO_SECRET = 'YOUR_ALPACA_SECRET_KEY';
+
+let API_KEY = '', API_SECRET = '', refreshTimer = null;
+const BASE = 'https://paper-api.alpaca.markets/v2';
+
+const SYMBOLS = ['QQQ', 'TQQQ'];
+
+// ── UTILS ──────────────────────────────────────────────────
+const fM = (n, sign=false) => {
+  if (n == null || isNaN(n)) return '—';
+  const abs = Math.abs(+n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (sign) return (+n >= 0 ? '+$' : '-$') + abs;
+  return '$' + abs;
+};
+const f2 = (n) => n == null ? '—' : (+n).toFixed(2);
+const fN = (n) => n == null ? '—' : (+n).toLocaleString();
+
+function pnlColor(v) {
+  return +v >= 0 ? 'var(--green)' : 'var(--red)';
+}
+
+// ── API ────────────────────────────────────────────────────
+async function api(path) {
+  const r = await fetch(BASE + path, {
+    headers: {
+      'APCA-API-KEY-ID':     API_KEY,
+      'APCA-API-SECRET-KEY': API_SECRET,
+    }
+  });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+// ── CONNECT ────────────────────────────────────────────────
+async function connect() {
+  const key    = document.getElementById('inp-key').value.trim();
+  const secret = document.getElementById('inp-secret').value.trim();
+
+  if (!key || !secret) {
+    alert('Please enter both API key and secret key');
+    return;
+  }
+
+  API_KEY    = key;
+  API_SECRET = secret;
+
+  try {
+    const acct = await api('/account');
+    if (acct.status !== 'ACTIVE') throw new Error('Account not active');
+
+    // Switch screens
+    document.getElementById('config-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+
+    fetchAll();
+    // Auto-refresh every 15 seconds
+    refreshTimer = setInterval(fetchAll, 15000);
+  } catch(e) {
+    alert('Connection failed: ' + e.message + '\n\nMake sure you are using Paper Trading keys.');
+    API_KEY = API_SECRET = '';
+  }
+}
+
+// ── CLOCK ──────────────────────────────────────────────────
+function updateClock() {
+  const now    = new Date();
+  const ist    = now.toLocaleTimeString('en-US', {timeZone:'Asia/Kolkata',  hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const et     = now.toLocaleTimeString('en-US', {timeZone:'America/New_York', hour:'2-digit', minute:'2-digit', hour12:true});
+  const etDate = now.toLocaleDateString('en-US', {timeZone:'America/New_York', weekday:'short', month:'short', day:'numeric'});
+
+  document.getElementById('clock').textContent    = ist + ' IST';
+  document.getElementById('clock-et').textContent = et + ' ET · ' + etDate;
+
+  // Market status
+  const etH = +now.toLocaleString('en-US', {timeZone:'America/New_York', hour:'numeric', hour12:false});
+  const etMn = +now.toLocaleString('en-US', {timeZone:'America/New_York', minute:'numeric'});
+  const mins = etH * 60 + etMn;
+  const badge = document.getElementById('mkt-badge');
+
+  if (mins >= 9*60+30 && mins < 16*60) {
+    badge.textContent = 'MARKET OPEN';
+    badge.className   = 'mkt-badge mkt-open';
+  } else if (mins >= 4*60 && mins < 9*60+30) {
+    badge.textContent = 'PRE-MARKET';
+    badge.className   = 'mkt-badge mkt-closed';
+  } else {
+    // Before 4:00 AM ET or after 4:00 PM ET = After-Hours
+    badge.textContent = 'AFTER-HOURS';
+    badge.className   = 'mkt-badge mkt-closed';
+  }
+}
+
+setInterval(updateClock, 1000);
+updateClock();
+
+// Auto-connect with hardcoded keys on page load
+window.addEventListener('load', () => {
+  API_KEY    = AUTO_KEY;
+  API_SECRET = AUTO_SECRET;
+  fetchAll();
+  refreshTimer = setInterval(fetchAll, 15000);
+});
+
+// ── FETCH ALL ──────────────────────────────────────────────
+async function fetchAll() {
+  try {
+    const [acct, positions, orders] = await Promise.all([
+      api('/account'),
+      api('/positions'),
+      api('/orders?status=all&limit=40&direction=desc'),
+    ]);
+
+    renderAccount(acct);
+    renderSymbolCards(positions);
+    renderPositions(positions);
+    renderOrders(orders);
+
+    document.getElementById('conn-dot').className    = 'dot';
+    document.getElementById('conn-label').textContent = 'LIVE';
+    document.getElementById('conn-label').style.color = 'var(--green)';
+    document.getElementById('last-update').textContent =
+      'Last updated: ' + new Date().toLocaleTimeString('en-US', {timeZone:'Asia/Kolkata'}) + ' IST';
+
+  } catch(e) {
+    document.getElementById('conn-dot').className    = 'dot red';
+    document.getElementById('conn-label').textContent = 'ERROR';
+    document.getElementById('conn-label').style.color = 'var(--red)';
+    console.error('Fetch error:', e);
+  }
+}
+
+// ── RENDER ACCOUNT ─────────────────────────────────────────
+function renderAccount(a) {
+  const pnl = parseFloat(a.equity) - parseFloat(a.last_equity);
+  document.getElementById('acc-equity').textContent = fM(a.equity);
+  document.getElementById('acc-bp').textContent     = fM(a.buying_power);
+  document.getElementById('acc-cash').textContent   = fM(a.cash);
+
+  const pnlEl = document.getElementById('acc-pnl');
+  pnlEl.textContent  = fM(pnl, true);
+  pnlEl.style.color  = pnlColor(pnl);
+}
+
+// ── RENDER SYMBOL CARDS ────────────────────────────────────
+function renderSymbolCards(positions) {
+  const grid = document.getElementById('sym-grid');
+  grid.innerHTML = '';
+
+  for (const sym of SYMBOLS) {
+    const pos = positions.find(p => p.symbol === sym);
+    const side = pos ? (parseFloat(pos.qty) > 0 ? 'long' : 'short') : null;
+    const price    = pos ? parseFloat(pos.current_price)    : null;
+    const avgEntry = pos ? parseFloat(pos.avg_entry_price)  : null;
+    const unreal   = pos ? parseFloat(pos.unrealized_pl)    : null;
+    const qty      = pos ? Math.abs(parseFloat(pos.qty))    : 0;
+    const mktVal   = pos ? parseFloat(pos.market_value)     : null;
+
+    const sideClass = side === 'long' ? 'side-long' : side === 'short' ? 'side-short' : 'side-flat';
+    const sideText  = side ? side.toUpperCase() : 'FLAT';
+    const accentCol = side === 'long' ? 'var(--green)' : side === 'short' ? 'var(--red)' : 'var(--border)';
+
+    // VWAP bar (simulated — real VWAP is in bot, we show price vs entry as proxy)
+    const diff    = avgEntry ? ((price - avgEntry) / avgEntry * 100) : 0;
+    const pct     = Math.min(Math.abs(diff) * 20, 50);
+    const barLeft = diff >= 0 ? '50%' : `${50 - pct}%`;
+    const barW    = pct + '%';
+    const barCol  = diff >= 0 ? 'var(--green)' : 'var(--red)';
+
+    grid.innerHTML += `
+      <div class="sym-card">
+        <div class="sym-header" style="border-top:2px solid ${accentCol}">
+          <div class="sym-top">
+            <div>
+              <div class="sym-name">${sym}</div>
+              <div class="sym-full">${sym === 'QQQ' ? 'INVESCO QQQ TRUST' : 'PROSHARES ULTRA QQQ 3×'}</div>
+            </div>
+            <div class="side-pill ${sideClass}">${sideText}</div>
+          </div>
+          <div class="price-row">
+            <div class="price-block">
+              <div class="plabel">PRICE</div>
+              <div class="pval green">$${price ? f2(price) : '—'}</div>
+            </div>
+            <div class="price-block">
+              <div class="plabel">ENTRY</div>
+              <div class="pval yellow">$${avgEntry ? f2(avgEntry) : '—'}</div>
+            </div>
+          </div>
+        </div>
+        <div class="vwap-bar-wrap">
+          <div class="vwap-bar-labels">
+            <span>PRICE vs ENTRY</span>
+            <span style="color:${barCol}">${diff >= 0 ? '+' : ''}${diff.toFixed(3)}%</span>
+          </div>
+          <div class="vwap-bar-track">
+            <div class="vwap-bar-fill" style="left:${barLeft};width:${barW};background:${barCol}"></div>
+          </div>
+        </div>
+        <div class="sym-stats">
+          <div class="stat-box">
+            <div class="stat-label">POSITION</div>
+            <div class="stat-val">${qty ? (side === 'long' ? '+' : '-') + fN(qty) + ' sh' : '—'}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">MARKET VALUE</div>
+            <div class="stat-val">${fM(mktVal)}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">UNREALIZED P&L</div>
+            <div class="stat-val ${unreal >= 0 ? 'green' : 'red'}">${fM(unreal, true)}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">TODAY'S P&L</div>
+            <div class="stat-val ${pos && parseFloat(pos.unrealized_intraday_pl) >= 0 ? 'green' : 'red'}">
+              ${pos ? fM(pos.unrealized_intraday_pl, true) : '—'}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+}
+
+// ── RENDER POSITIONS ───────────────────────────────────────
+function renderPositions(positions) {
+  const tb = document.getElementById('positions-body');
+
+  if (!positions.length) {
+    tb.innerHTML = '<tr><td colspan="7" class="empty">No open positions — bot is flat or market is closed</td></tr>';
+    return;
+  }
+
+  tb.innerHTML = positions.map(p => {
+    const side  = parseFloat(p.qty) > 0 ? 'LONG' : 'SHORT';
+    const col   = side === 'LONG' ? 'var(--green)' : 'var(--red)';
+    const unPnl = parseFloat(p.unrealized_pl);
+    return `
+      <tr>
+        <td><b style="color:var(--text)">${p.symbol}</b></td>
+        <td><span class="tag ${side==='LONG'?'tag-buy':'tag-sell'}">${side}</span></td>
+        <td>${fN(Math.abs(p.qty))}</td>
+        <td>$${f2(p.avg_entry_price)}</td>
+        <td>$${f2(p.current_price)}</td>
+        <td style="color:${pnlColor(unPnl)};font-weight:700">${fM(unPnl, true)}</td>
+        <td>${fM(p.market_value)}</td>
+      </tr>`;
+  }).join('');
+}
+
+// ── RENDER ORDERS ──────────────────────────────────────────
+function renderOrders(orders) {
+  const tb = document.getElementById('orders-body');
+  document.getElementById('order-count').textContent = orders.length;
+
+  if (!orders.length) {
+    tb.innerHTML = '<tr><td colspan="7" class="empty">No orders yet today</td></tr>';
+    return;
+  }
+
+  tb.innerHTML = orders.slice(0, 30).map(o => {
+    const ts = new Date(o.submitted_at).toLocaleTimeString('en-US',
+      {timeZone:'America/New_York', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    const sideClass  = o.side === 'buy' ? 'tag-buy' : 'tag-sell';
+    const statClass  = o.status === 'filled' ? 'tag-filled' : '';
+    const filledAt   = o.filled_avg_price ? '$' + f2(o.filled_avg_price) : '—';
+    return `
+      <tr>
+        <td style="color:var(--dim)">${ts}</td>
+        <td><b style="color:var(--text)">${o.symbol}</b></td>
+        <td><span class="tag ${sideClass}">${o.side.toUpperCase()}</span></td>
+        <td>${fN(o.qty)}</td>
+        <td style="color:var(--dim)">${o.type.toUpperCase()}</td>
+        <td><span class="tag ${statClass}">${o.status.toUpperCase()}</span></td>
+        <td style="color:var(--yellow)">${filledAt}</td>
+      </tr>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
