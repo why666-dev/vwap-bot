@@ -1,0 +1,54 @@
+name: VWAP Bot — Live Paper Trading
+
+on:
+  schedule:
+    # 6:55 PM IST = 1:25 PM UTC = 9:25 AM ET — Mon to Fri
+    - cron: "25 13 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 420
+
+    env:
+      ALPACA_API_KEY:    ${{ secrets.ALPACA_API_KEY }}
+      ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+      TELEGRAM_TOKEN:    ${{ secrets.TELEGRAM_TOKEN }}
+      TELEGRAM_CHAT_ID:  ${{ secrets.TELEGRAM_CHAT_ID }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Confirm Alpaca paper account
+        run: |
+          python - << 'PYEOF'
+          import os
+          import alpaca_trade_api as tradeapi
+          api = tradeapi.REST(
+            os.environ["ALPACA_API_KEY"],
+            os.environ["ALPACA_SECRET_KEY"],
+            "https://paper-api.alpaca.markets",
+            api_version="v2"
+          )
+          acct = api.get_account()
+          print(f"✅ Alpaca Connected")
+          print(f"   Equity:       ${float(acct.equity):,.2f}")
+          print(f"   Buying Power: ${float(acct.buying_power):,.2f}")
+          print(f"   Status:       {acct.status}")
+          PYEOF
+
+      - name: Run VWAP Bot
+        run: python main.py
