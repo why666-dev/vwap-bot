@@ -49,7 +49,7 @@ SYMBOLS        = ["QQQ", "TQQQ"]
 ET             = pytz.timezone("America/New_York")
 SESSION_START  = time(9, 30)    # VWAP resets here — no pre-market data
 FIRST_ENTRY_AT = time(9, 31)    # First valid candle close at 09:31
-SESSION_END    = time(15, 58)   # 2-min buffer before market close
+SESSION_END    = time(15, 55)   # 5-min buffer before market close
 COMMISSION     = 0.0005         # $0.0005/share — paper sec 3.4
 
 # Paper sec 5 (Fig 7): most profit in morning + last hour
