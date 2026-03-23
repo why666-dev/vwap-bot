@@ -761,16 +761,27 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-// Auto-connect with hardcoded keys on page load
+// Show login screen on load — keys entered manually (safe for public repo)
 window.addEventListener('load', () => {
-  API_KEY    = AUTO_KEY;
-  API_SECRET = AUTO_SECRET;
-  fetchAll();
-  refreshTimer = setInterval(fetchAll, 15000);
+  // If auto keys are set (private repo), connect automatically
+  if (AUTO_KEY && AUTO_KEY !== 'YOUR_ALPACA_API_KEY') {
+    API_KEY    = AUTO_KEY;
+    API_SECRET = AUTO_SECRET;
+    document.getElementById('config-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    fetchAll();
+    refreshTimer = setInterval(fetchAll, 15000);
+  }
+  // Otherwise show login screen
 });
 
 // ── FETCH ALL ──────────────────────────────────────────────
 async function fetchAll() {
+  // Check keys are set
+  if (!API_KEY || API_KEY === 'YOUR_ALPACA_API_KEY') {
+    setError('Enter your Alpaca paper keys to connect');
+    return;
+  }
   try {
     const [acct, positions, orders] = await Promise.all([
       api('/account'),
