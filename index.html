@@ -722,12 +722,15 @@ async function connect() {
     const acct = await api('/account');
     if (acct.status !== 'ACTIVE') throw new Error('Account not active');
 
+    // Save to localStorage — never enter keys again
+    localStorage.setItem('alpaca_key',    key);
+    localStorage.setItem('alpaca_secret', secret);
+
     // Switch screens
     document.getElementById('config-screen').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('dashboard').style.display     = 'block';
 
     fetchAll();
-    // Auto-refresh every 15 seconds
     refreshTimer = setInterval(fetchAll, 15000);
   } catch(e) {
     alert('Connection failed: ' + e.message + '\n\nMake sure you are using Paper Trading keys.');
@@ -767,14 +770,19 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-// Show login screen on load — keys entered manually (safe for public repo)
+// Auto-connect using localStorage — enter once, remembered forever
 window.addEventListener('load', () => {
-  // If auto keys are set (private repo), connect automatically
-  if (AUTO_KEY && AUTO_KEY !== 'YOUR_ALPACA_API_KEY') {
-    API_KEY    = AUTO_KEY;
-    API_SECRET = AUTO_SECRET;
+  const savedKey    = localStorage.getItem('alpaca_key')    || AUTO_KEY;
+  const savedSecret = localStorage.getItem('alpaca_secret') || AUTO_SECRET;
+
+  if (savedKey && savedKey !== 'YOUR_ALPACA_API_KEY') {
+    // Keys saved — connect directly, no login needed
+    API_KEY    = savedKey;
+    API_SECRET = savedSecret;
+    document.getElementById('inp-key').value    = savedKey;
+    document.getElementById('inp-secret').value = savedSecret;
     document.getElementById('config-screen').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('dashboard').style.display     = 'block';
     fetchAll();
     refreshTimer = setInterval(fetchAll, 15000);
   }
