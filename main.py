@@ -23,6 +23,8 @@ if __name__ == "__main__":
     print("  Dashboard API: http://localhost:5050")
     print("  WebSocket:     ws://localhost:5050/ws")
     print("=" * 60)
+    # Run bot (blocking — streams live 1-min bars)
+    bot.run()
 
     # Run bot (blocking — streams live 1-min bars)
     bot.run()
